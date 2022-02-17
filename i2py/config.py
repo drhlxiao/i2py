@@ -27,14 +27,11 @@ Package-wide configuration data
 import string
 
 
-arraymodule	= 'numpy'	# Name of array module
-idltab		= '    '	# Tab for IDL code
-pytab		= '    '	# Tab for Python code
+arraymodule	= 'numarray'	# Name of array module
+idltab		= '   '		# Tab for IDL code
+pytab		= '   '		# Tab for Python code
 sysvarprefix	= '_sys_'	# Replacement for '!' in system variable names
 idlnameconv	= string.upper	# Conversion function for IDL identifiers
-pynameconv	= string.strip	# Conversion function for Python identifiers
-baseclassname   = 'I2PY_Struct'
+pynameconv	= string.lower	# Conversion function for Python identifiers
 
-inttype  = 'int32'		# Change to Int16 if you want IDL's default short ints
-uinttype = 'uint32'		# Change to Uint16 if you want IDL's default short ints
 

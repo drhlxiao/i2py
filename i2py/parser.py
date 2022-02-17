@@ -31,7 +31,7 @@ import error
 from lexer import lexer, tokens
 import yacc
 import ir
-import i2py_map
+import map
 try:
    set
 except NameError:
@@ -55,14 +55,8 @@ productions = '''
 translation_unit
 	: program
 	| NEWLINE program
-	| statement_list unit_end
-	| NEWLINE statement_list unit_end
-	| program statement_list unit_end
-	| NEWLINE program statement_list unit_end
-
-unit_end
-	: END NEWLINE
-	| NEWLINE
+	| statement_list
+	| NEWLINE statement_list
 
 program
 	: subroutine_definition
@@ -73,8 +67,8 @@ subroutine_definition
 	| FUNCTION subroutine_body
 
 subroutine_body
-	: method_name NEWLINE statement_list END NEWLINE
-	| method_name COMMA parameter_list NEWLINE statement_list END NEWLINE
+	: IDENTIFIER NEWLINE statement_list END NEWLINE
+	| IDENTIFIER COMMA parameter_list NEWLINE statement_list END NEWLINE
 
 parameter_list
 	: parameter
@@ -99,7 +93,6 @@ compound_statement
 	| if_statement
 	| selection_statement
 	| for_statement
-	| foreach_statement
 	| while_statement
 	| repeat_statement
 
@@ -149,15 +142,6 @@ for_index
 	: IDENTIFIER EQUALS expression COMMA expression
 	| IDENTIFIER EQUALS expression COMMA expression COMMA expression
 
-foreach_statement
-	: FOREACH foreach_index DO statement
-	| FOREACH foreach_index DO BEGIN NEWLINE statement_list ENDFOREACH
-	| FOREACH foreach_index DO BEGIN NEWLINE statement_list END
-
-foreach_index
-	: IDENTIFIER COMMA expression
-	| IDENTIFIER COMMA expression COMMA IDENTIFIER
-
 while_statement
 	: WHILE expression DO statement
 	| WHILE expression DO BEGIN NEWLINE statement_list ENDWHILE
@@ -172,6 +156,7 @@ simple_statement
 	: COMMON identifier_list
 	| COMPILE_OPT identifier_list
 	| FORWARD_FUNCTION identifier_list
+	| ON_IOERROR COMMA IDENTIFIER
 	| jump_statement
 	| procedure_call
 	| assignment_statement
@@ -189,8 +174,8 @@ jump_statement
 	| CONTINUE
 
 procedure_call
-	: method_or_proc
-	| method_or_proc COMMA argument_list
+	: IDENTIFIER
+	| IDENTIFIER COMMA argument_list
 
 argument_list
 	: argument
@@ -222,12 +207,13 @@ expression
 
 conditional_expression
 	: logical_expression
-	| logical_expression QUESTIONMARK conditional_expression COLON conditional_expression
+	| logical_expression QUESTIONMARK expression COLON conditional_expression
 
 logical_expression
 	: bitwise_expression
 	| logical_expression AMPAMP bitwise_expression
 	| logical_expression PIPEPIPE bitwise_expression
+	| TILDE bitwise_expression
 
 bitwise_expression
 	: relational_expression
@@ -268,7 +254,6 @@ unary_expression
 	: pointer_expression
 	| PLUS pointer_expression
 	| MINUS pointer_expression
-	| TILDE pointer_expression
 	| increment_statement
 
 pointer_expression
@@ -278,10 +263,10 @@ pointer_expression
 postfix_expression
 	: primary_expression
 	| postfix_expression LBRACKET subscript_list RBRACKET
-	| postfix_expression DOT LPAREN expression RPAREN
+	| IDENTIFIER LPAREN RPAREN
+	| IDENTIFIER LPAREN argument_list RPAREN
 	| postfix_expression DOT IDENTIFIER
-	| method_or_proc LPAREN argument_list RPAREN
-	| method_or_proc LPAREN RPAREN
+	| postfix_expression DOT LPAREN expression RPAREN
 
 primary_expression
 	: IDENTIFIER
@@ -294,8 +279,6 @@ primary_expression
 constant
 	: NUMBER
 	| STRING
-	| LBRACKET RBRACKET
-	| LBRACE RBRACE
 
 subscript_list
 	: subscript
@@ -314,7 +297,7 @@ expression_list
 	| expression_list COMMA expression
 
 structure_body
-	: anonymous_struct_field_list
+	: structure_field_list
 	| IDENTIFIER COMMA structure_field_list
 	| IDENTIFIER
 
@@ -324,27 +307,7 @@ structure_field_list
 
 structure_field
 	: IDENTIFIER COLON expression
-	| expression
 	| INHERITS IDENTIFIER
-
-anonymous_struct_field_list
-	: anonymous_struct_field
-	| anonymous_struct_field_list COMMA anonymous_struct_field
-
-anonymous_struct_field
-	: IDENTIFIER COLON expression
-
-method_or_proc
-	: object_method
-	| IDENTIFIER
-
-object_method
-	: pointer_expression ARROW method_name
-
-method_name
-	: IDENTIFIER DCOLON IDENTIFIER
-	| IDENTIFIER 
-
 '''
 
 
@@ -357,7 +320,6 @@ method_name
 
 def p_error(p):
    "Error function used by the parser"
-   import pdb; pdb.set_trace()
    error.syntax_error('invalid syntax at %s' % repr(str(p.value)), p.lineno)
 
 
@@ -403,7 +365,7 @@ def parse(input, debug=False):
 
    # Reset global state stuff
    error.clear_error_list()
-   i2py_map.clear_extra_code()
+   map.clear_extra_code()
    lexer.lineno = 1   # This needs to be reset manually (PLY bug?)
 
    # Ensure that the input contains a final newline (the parser will choke

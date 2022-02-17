@@ -65,32 +65,27 @@ def load_rcfile(filename=None):
    If filename is not given and none of the standard configuration files are
    found, the function does nothing.
    """
-
    if not filename:
-      stem = 'i2pyrc'
-      suffixes = ('', '.py')
 
-      for s in suffixes:
-         f = stem + s
-         if os.path.isfile(f):
-            filename = f
-	    break
-      else:
-         home = os.environ.get('HOME')
-         if home:
-            for s in suffixes:
-	       f = os.path.join(home, '.' + stem + s)
-               if os.path.isfile(f):
-                  filename = f
-	          break
-	    else:
-	       # Couldn't find a standard rcfile, so quit
-	       return
-
-   # Evaluate the rcfile, using rcdict for the globals dict so that our
-   # namespace doesn't get polluted
-   rcdict = {'map_var':map_var, 'map_pro':map_pro, 'map_func':map_func,
+       stem = 'i2pyrc'
+       suffixes = ('', '.py')
+       for s in suffixes:
+           f = stem + s
+           if os.path.isfile(f):
+               filename = f
+               break
+           else:
+               home = os.environ.get('HOME')
+               if home:
+                   for s in suffixes:
+                       f = os.path.join(home, '.' + stem + s)
+                       if os.path.isfile(f):
+                           filename = f
+                           break
+    else:
+        return
+    rcdict = {'map_var':map_var, 'map_pro':map_pro, 'map_func':map_func,
              'config':config}
-   execfile(filename, rcdict)
+    execfile(filename, rcdict)
 
 
